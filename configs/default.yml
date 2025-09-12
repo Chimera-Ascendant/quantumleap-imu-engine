@@ -1,0 +1,42 @@
+# QuantumLeap IMU Engine - default config
+
+sampling_rate_hz: 50
+sequence_length: 300   # 6s @ 50Hz for smoke tests; training can use 1500 (30s)
+classes:
+  - standing_march
+  - arm_circles
+  - step_touch
+  - wall_pushup
+  - seated_extension
+
+barometer_units:
+  pressure: kPa
+  altitude: m
+
+placement_invariance:
+  yaw_deg_range: [-30, 30]
+  pitch_deg_range: [-20, 20]
+  roll_deg_range: [-15, 15]
+
+fatigue_simulation:
+  jitter_gain_range: [0.0, 0.3]
+  velocity_drop_pct_range: [0.0, 0.3]
+  tempo_drift_pct_range: [0.0, 0.15]
+
+dataset:
+  samples_per_exercise: 10000
+  train_split: 0.8
+  val_split: 0.2
+
+model:
+  hidden_dim: 128
+  codebook_size: 256   # placeholder; VQ layer is stubbed for now
+  transformer_layers: 2
+  transformer_heads: 4
+
+loss_weights:
+  exercise_ce: 1.0
+  form_ce: 1.0
+  rep_bce: 2.0
+  fatigue_mse: 0.5
+  vq_commit: 1.0

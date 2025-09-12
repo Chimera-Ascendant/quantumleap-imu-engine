@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+.venv/
+.venv*/
+.env
+.python-version
+
+# Data
+*.npz
+*.npy
+out/
+logs/
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
