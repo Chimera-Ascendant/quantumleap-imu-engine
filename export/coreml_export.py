@@ -14,22 +14,49 @@ def export_coreml(checkpoint: str, output: str, sequence_length: int = 300):
             "coremltools is required for export. Please install coremltools on macOS."
         ) from e
 
-    model = PerceptionModel()
+    class Wrapper(torch.nn.Module):
+        def __init__(self, base):
+            super().__init__()
+            self.base = base
+
+        def forward(self, x):  # x: [B, 8, T]
+            out = self.base(x)
+            # Return deterministic tuple for Core ML
+            return (
+                out["exercise_logits"],  # [B, num_classes]
+                out["form_logits"],      # [B, num_forms]
+                out["rep_probs"],        # [B, T]
+                out["fatigue_score"],    # [B]
+            )
+
+    base = PerceptionModel()
     sd = torch.load(checkpoint, map_location="cpu")
-    model.load_state_dict(sd)
+    base.load_state_dict(sd)
+    base.eval()
+    model = Wrapper(base)
     model.eval()
 
     example = torch.randn(1, 8, sequence_length)
-    traced = torch.jit.trace(model, example)
+    # Avoid torch trace graph-diff checks due to squeeze ops by disabling check_trace
+    ts_module = torch.jit.trace(model, example, check_trace=False)
 
     mlmodel = ct.convert(
-        traced,
+        ts_module,
         inputs=[ct.TensorType(name="sensor_data", shape=example.shape)],
+        outputs=[
+            ct.TensorType(name="exercise_logits"),
+            ct.TensorType(name="form_logits"),
+            ct.TensorType(name="rep_probs"),
+            ct.TensorType(name="fatigue_score"),
+        ],
         compute_units=ct.ComputeUnit.CPU_AND_NE,
         minimum_deployment_target=ct.target.iOS15,
     )
 
     mlmodel.short_description = "Chimera Perception Engine"
+    if output.endswith(".mlmodel"):
+        print("[warn] ML Program requires .mlpackage; changing extension automatically.")
+        output = output[:-8] + ".mlpackage"
     mlmodel.save(output)
     print(f"Saved Core ML model to {output}")
 
